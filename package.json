@@ -15,8 +15,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "check": "tsc -p tsconfig.json --noEmit",
-    "prepare": "pnpm run build"
+    "check": "tsc -p tsconfig.json --noEmit"
   },
   "repository": {
     "type": "git",
