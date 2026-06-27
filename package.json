@@ -1,0 +1,42 @@
+{
+  "name": "@crepidoma/wxt-customizer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal post-init customizer for WXT React projects.",
+  "type": "module",
+  "bin": {
+    "wxt-customizer": "./bin/index.mjs"
+  },
+  "files": [
+    "bin",
+    "overlay",
+    "README.md",
+    "README.ja.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "prepare": "pnpm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crepidoma/wxt-customizer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/crepidoma/wxt-customizer/issues"
+  },
+  "homepage": "https://github.com/crepidoma/wxt-customizer#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.12.1",
+  "dependencies": {
+    "@inquirer/prompts": "^8.5.2",
+    "commander": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "tsdown": "^0.22.3",
+    "typescript": "^6.0.3"
+  }
+}
