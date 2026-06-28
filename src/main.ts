@@ -3,7 +3,7 @@ import { parseOptions, resolvePackageName } from './cli.js';
 import { pathExists } from './fs.js';
 import { patchGitignore } from './gitignore.js';
 import { copyOverlay } from './overlay.js';
-import { detectPackageManager, installDependencies } from './package-manager.js';
+import { detectPackageManager, installDependencies, runWxtPrepare } from './package-manager.js';
 import { updatePackageJson } from './package-json.js';
 
 export async function main(): Promise<void> {
@@ -25,10 +25,12 @@ export async function main(): Promise<void> {
 
   if (options.install) {
     await installDependencies(options.dir, packageManager, options.dryRun);
-    return;
+  } else {
+    console.log(`${prefix(options.dryRun)}Skipped dependency installation`);
   }
 
-  console.log(`${prefix(options.dryRun)}Skipped dependency installation`);
+  await runWxtPrepare(options.dir, packageManager, options.dryRun);
+  console.log(`${prefix(options.dryRun)}=== WXT customizer finished ===`);
 }
 
 function reportFileChanges(
@@ -51,6 +53,8 @@ function reportFileChanges(
   for (const file of overlayResult.skipped) {
     console.log(`${prefix(dryRun)}Skipped ${file}`);
   }
+
+  console.log();
 }
 
 function prefix(dryRun: boolean): string {

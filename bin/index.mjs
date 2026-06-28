@@ -80,8 +80,17 @@ async function detectPackageManager(targetDir, explicitPackageManager) {
 	return "npm";
 }
 async function installDependencies(targetDir, packageManager, dryRun) {
+	logSection(dryRun, "Installing runtime dependencies");
 	await runCommand(createAddCommand(packageManager, runtimeDependencies, false), targetDir, dryRun);
+	logSectionEnd(dryRun, "Finished runtime dependency installation");
+	logSection(dryRun, "Installing dev dependencies");
 	await runCommand(createAddCommand(packageManager, devDependencies, true), targetDir, dryRun);
+	logSectionEnd(dryRun, "Finished dev dependency installation");
+}
+async function runWxtPrepare(targetDir, packageManager, dryRun) {
+	logSection(dryRun, "Running wxt prepare");
+	await runCommand(createPrepareCommand(packageManager), targetDir, dryRun);
+	logSectionEnd(dryRun, "Finished wxt prepare");
 }
 function createAddCommand(packageManager, packages, dev) {
 	switch (packageManager) {
@@ -89,6 +98,7 @@ function createAddCommand(packageManager, packages, dev) {
 			command: "npm",
 			args: [
 				"install",
+				"--ignore-scripts",
 				...dev ? ["--save-dev"] : [],
 				...packages
 			]
@@ -97,6 +107,7 @@ function createAddCommand(packageManager, packages, dev) {
 			command: "yarn",
 			args: [
 				"add",
+				"--ignore-scripts",
 				...dev ? ["--dev"] : [],
 				...packages
 			]
@@ -114,8 +125,46 @@ function createAddCommand(packageManager, packages, dev) {
 			command: "bun",
 			args: [
 				"add",
+				"--ignore-scripts",
 				...dev ? ["--dev"] : [],
 				...packages
+			]
+		};
+	}
+}
+function createPrepareCommand(packageManager) {
+	switch (packageManager) {
+		case "npm": return {
+			command: "npm",
+			args: [
+				"exec",
+				"--",
+				"wxt",
+				"prepare"
+			]
+		};
+		case "yarn": return {
+			command: "yarn",
+			args: [
+				"exec",
+				"wxt",
+				"prepare"
+			]
+		};
+		case "pnpm": return {
+			command: "pnpm",
+			args: [
+				"exec",
+				"wxt",
+				"prepare"
+			]
+		};
+		case "bun": return {
+			command: "bun",
+			args: [
+				"x",
+				"wxt",
+				"prepare"
 			]
 		};
 	}
@@ -123,8 +172,17 @@ function createAddCommand(packageManager, packages, dev) {
 function formatCommand({ command, args }) {
 	return [command, ...args].join(" ");
 }
+function logSection(dryRun, message) {
+	console.log(`${prefix$1(dryRun)}--- ${message} ---`);
+}
+function logSectionEnd(dryRun, message) {
+	console.log(`${prefix$1(dryRun)}--- ${message} ---\n`);
+}
+function prefix$1(dryRun) {
+	return dryRun ? "[dry-run] " : "";
+}
 async function runCommand(shellCommand, cwd, dryRun) {
-	console.log(`${dryRun ? "[dry-run] " : ""}${formatCommand(shellCommand)}`);
+	console.log(`${prefix$1(dryRun)}${formatCommand(shellCommand)}`);
 	if (dryRun) return;
 	await new Promise((resolve, reject) => {
 		const child = spawn(shellCommand.command, shellCommand.args, {
@@ -247,17 +305,17 @@ async function main() {
 	const gitignoreResult = await patchGitignore(options.dir, options.dryRun);
 	const overlayResult = await copyOverlay(options.dir, options);
 	reportFileChanges(options.dir, options.dryRun, updatedPackagePath, gitignoreResult, overlayResult);
-	if (options.install) {
-		await installDependencies(options.dir, packageManager, options.dryRun);
-		return;
-	}
-	console.log(`${prefix(options.dryRun)}Skipped dependency installation`);
+	if (options.install) await installDependencies(options.dir, packageManager, options.dryRun);
+	else console.log(`${prefix(options.dryRun)}Skipped dependency installation`);
+	await runWxtPrepare(options.dir, packageManager, options.dryRun);
+	console.log(`${prefix(options.dryRun)}=== WXT customizer finished ===`);
 }
 function reportFileChanges(targetDir, dryRun, updatedPackagePath, gitignoreResult, overlayResult) {
 	console.log(`${prefix(dryRun)}Updated ${path.relative(targetDir, updatedPackagePath)}`);
 	if (gitignoreResult.changed) console.log(`${prefix(dryRun)}Updated ${path.relative(targetDir, gitignoreResult.path)}`);
 	for (const file of overlayResult.copied) console.log(`${prefix(dryRun)}Copied ${file}`);
 	for (const file of overlayResult.skipped) console.log(`${prefix(dryRun)}Skipped ${file}`);
+	console.log();
 }
 function prefix(dryRun) {
 	return dryRun ? "[dry-run] " : "";

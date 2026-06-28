@@ -35,20 +35,44 @@ export async function detectPackageManager(targetDir: string, explicitPackageMan
 }
 
 export async function installDependencies(targetDir: string, packageManager: PackageManager, dryRun: boolean): Promise<void> {
+  logSection(dryRun, 'Installing runtime dependencies');
   await runCommand(createAddCommand(packageManager, runtimeDependencies, false), targetDir, dryRun);
+  logSectionEnd(dryRun, 'Finished runtime dependency installation');
+
+  logSection(dryRun, 'Installing dev dependencies');
   await runCommand(createAddCommand(packageManager, devDependencies, true), targetDir, dryRun);
+  logSectionEnd(dryRun, 'Finished dev dependency installation');
+}
+
+export async function runWxtPrepare(targetDir: string, packageManager: PackageManager, dryRun: boolean): Promise<void> {
+  logSection(dryRun, 'Running wxt prepare');
+  await runCommand(createPrepareCommand(packageManager), targetDir, dryRun);
+  logSectionEnd(dryRun, 'Finished wxt prepare');
 }
 
 function createAddCommand(packageManager: PackageManager, packages: string[], dev: boolean): ShellCommand {
   switch (packageManager) {
     case 'npm':
-      return { command: 'npm', args: ['install', ...(dev ? ['--save-dev'] : []), ...packages] };
+      return { command: 'npm', args: ['install', '--ignore-scripts', ...(dev ? ['--save-dev'] : []), ...packages] };
     case 'yarn':
-      return { command: 'yarn', args: ['add', ...(dev ? ['--dev'] : []), ...packages] };
+      return { command: 'yarn', args: ['add', '--ignore-scripts', ...(dev ? ['--dev'] : []), ...packages] };
     case 'pnpm':
       return { command: 'pnpm', args: ['add', '--ignore-scripts', ...(dev ? ['--save-dev'] : []), ...packages] };
     case 'bun':
-      return { command: 'bun', args: ['add', ...(dev ? ['--dev'] : []), ...packages] };
+      return { command: 'bun', args: ['add', '--ignore-scripts', ...(dev ? ['--dev'] : []), ...packages] };
+  }
+}
+
+function createPrepareCommand(packageManager: PackageManager): ShellCommand {
+  switch (packageManager) {
+    case 'npm':
+      return { command: 'npm', args: ['exec', '--', 'wxt', 'prepare'] };
+    case 'yarn':
+      return { command: 'yarn', args: ['exec', 'wxt', 'prepare'] };
+    case 'pnpm':
+      return { command: 'pnpm', args: ['exec', 'wxt', 'prepare'] };
+    case 'bun':
+      return { command: 'bun', args: ['x', 'wxt', 'prepare'] };
   }
 }
 
@@ -56,8 +80,20 @@ function formatCommand({ command, args }: ShellCommand): string {
   return [command, ...args].join(' ');
 }
 
+function logSection(dryRun: boolean, message: string): void {
+  console.log(`${prefix(dryRun)}--- ${message} ---`);
+}
+
+function logSectionEnd(dryRun: boolean, message: string): void {
+  console.log(`${prefix(dryRun)}--- ${message} ---\n`);
+}
+
+function prefix(dryRun: boolean): string {
+  return dryRun ? '[dry-run] ' : '';
+}
+
 async function runCommand(shellCommand: ShellCommand, cwd: string, dryRun: boolean): Promise<void> {
-  console.log(`${dryRun ? '[dry-run] ' : ''}${formatCommand(shellCommand)}`);
+  console.log(`${prefix(dryRun)}${formatCommand(shellCommand)}`);
   if (dryRun) {
     return;
   }
